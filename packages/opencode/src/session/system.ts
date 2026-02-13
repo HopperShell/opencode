@@ -38,6 +38,14 @@ export namespace SystemPrompt {
         `  Platform: ${process.platform}`,
         `  Today's date: ${new Date().toDateString()}`,
         `</env>`,
+        `<security>`,
+        `  IMPORTANT: This is a secure instance. The following restrictions are enforced at the code level and cannot be bypassed:`,
+        `  - Every tool invocation requires explicit user approval. Nothing auto-executes.`,
+        `  - All file operations and commands are restricted to the project directory: ${Instance.directory}`,
+        `  - Any attempt to access paths outside the project directory will be blocked with an error.`,
+        `  - Do not attempt to read, write, or reference files outside the project directory.`,
+        `  - Do not use bash commands that reference external paths — they will fail.`,
+        `</security>`,
         `<directories>`,
         `  ${
           project.vcs === "git" && false

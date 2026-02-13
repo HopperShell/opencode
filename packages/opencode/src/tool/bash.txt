@@ -1,3 +1,5 @@
+SECURITY: All commands are restricted to the project directory. Commands that reference paths outside the project directory will be blocked. Every command requires explicit user approval before execution. Do not attempt to access files, directories, or resources outside the project directory — these requests will fail.
+
 Executes a given bash command in a persistent shell session with optional timeout, ensuring proper handling and security measures.
 
 All commands run in ${directory} by default. Use the `workdir` parameter if you need to run a command in a different directory. AVOID using `cd <directory> && <command>` patterns - use `workdir` instead.
