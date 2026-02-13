@@ -34,10 +34,7 @@ export const ReadTool = Tool.define("read", {
     const file = Bun.file(filepath)
     const stat = await file.stat().catch(() => undefined)
 
-    await assertExternalDirectory(ctx, filepath, {
-      bypass: Boolean(ctx.extra?.["bypassCwdCheck"]),
-      kind: stat?.isDirectory() ? "directory" : "file",
-    })
+    await assertExternalDirectory(ctx, filepath)
 
     await ctx.ask({
       permission: "read",
