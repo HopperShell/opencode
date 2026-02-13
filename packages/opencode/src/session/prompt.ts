@@ -422,7 +422,7 @@ export namespace SessionPrompt {
           sessionID: sessionID,
           abort,
           callID: part.callID,
-          extra: { bypassAgentCheck: true },
+          extra: {},
           messages: msgs,
           async metadata(input) {
             await Session.updatePart({
@@ -591,17 +591,12 @@ export namespace SessionPrompt {
       })
       using _ = defer(() => InstructionPrompt.clear(processor.message.id))
 
-      // Check if user explicitly invoked an agent via @ in this turn
-      const lastUserMsg = msgs.findLast((m) => m.info.role === "user")
-      const bypassAgentCheck = lastUserMsg?.parts.some((p) => p.type === "agent") ?? false
-
       const tools = await resolveTools({
         agent,
         session,
         model,
         tools: lastUser.tools,
         processor,
-        bypassAgentCheck,
         messages: msgs,
       })
 
@@ -735,7 +730,6 @@ export namespace SessionPrompt {
     session: Session.Info
     tools?: Record<string, boolean>
     processor: SessionProcessor.Info
-    bypassAgentCheck: boolean
     messages: MessageV2.WithParts[]
   }) {
     using _ = log.time("resolveTools")
@@ -746,7 +740,7 @@ export namespace SessionPrompt {
       abort: options.abortSignal!,
       messageID: input.processor.message.id,
       callID: options.toolCallId,
-      extra: { model: input.model, bypassAgentCheck: input.bypassAgentCheck },
+      extra: { model: input.model },
       agent: input.agent.name,
       messages: input.messages,
       metadata: async (val: { title?: string; metadata?: any }) => {
@@ -1141,7 +1135,7 @@ export namespace SessionPrompt {
                       abort: new AbortController().signal,
                       agent: input.agent!,
                       messageID: info.id,
-                      extra: { bypassCwdCheck: true, model },
+                      extra: { model },
                       messages: [],
                       metadata: async () => {},
                       ask: async () => {},
@@ -1203,7 +1197,7 @@ export namespace SessionPrompt {
                   abort: new AbortController().signal,
                   agent: input.agent!,
                   messageID: info.id,
-                  extra: { bypassCwdCheck: true },
+                  extra: {},
                   messages: [],
                   metadata: async () => {},
                   ask: async () => {},
