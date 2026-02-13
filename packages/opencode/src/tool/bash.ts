@@ -9,7 +9,6 @@ import { lazy } from "@/util/lazy"
 import { Language } from "web-tree-sitter"
 
 import { $ } from "bun"
-import { Filesystem } from "@/util/filesystem"
 import { fileURLToPath } from "url"
 import { Flag } from "@/flag/flag.ts"
 import { Shell } from "@/shell/shell"
@@ -85,8 +84,11 @@ export const BashTool = Tool.define("bash", async () => {
       if (!tree) {
         throw new Error("Failed to parse command")
       }
-      const directories = new Set<string>()
-      if (!Instance.containsPath(cwd)) directories.add(cwd)
+      if (!Instance.containsPath(cwd)) {
+        throw new Error(
+          `Access denied: working directory ${cwd} is outside the project directory (${Instance.directory}). All commands must run within the project directory.`,
+        )
+      }
       const patterns = new Set<string>()
       const always = new Set<string>()
 
@@ -130,8 +132,9 @@ export const BashTool = Tool.define("bash", async () => {
                   ? resolved.replace(/^\/([a-z])\//, (_, drive) => `${drive.toUpperCase()}:\\`).replace(/\//g, "\\")
                   : resolved
               if (!Instance.containsPath(normalized)) {
-                const dir = (await Filesystem.isDir(normalized)) ? normalized : path.dirname(normalized)
-                directories.add(dir)
+                throw new Error(
+                  `Access denied: command references path ${normalized} which is outside the project directory (${Instance.directory}). All commands must operate within the project directory.`,
+                )
               }
             }
           }
@@ -142,16 +145,6 @@ export const BashTool = Tool.define("bash", async () => {
           patterns.add(commandText)
           always.add(BashArity.prefix(command).join(" ") + " *")
         }
-      }
-
-      if (directories.size > 0) {
-        const globs = Array.from(directories).map((dir) => path.join(dir, "*"))
-        await ctx.ask({
-          permission: "external_directory",
-          patterns: globs,
-          always: globs,
-          metadata: {},
-        })
       }
 
       if (patterns.size > 0) {

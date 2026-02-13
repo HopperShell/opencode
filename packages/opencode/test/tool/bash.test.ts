@@ -95,61 +95,46 @@ describe("tool.bash permissions", () => {
     })
   })
 
-  test("asks for external_directory permission when cd to parent", async () => {
+  test("throws when cd to parent directory", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const bash = await BashTool.init()
-        const requests: Array<Omit<PermissionNext.Request, "id" | "sessionID" | "tool">> = []
-        const testCtx = {
-          ...ctx,
-          ask: async (req: Omit<PermissionNext.Request, "id" | "sessionID" | "tool">) => {
-            requests.push(req)
-          },
-        }
-        await bash.execute(
-          {
-            command: "cd ../",
-            description: "Change to parent directory",
-          },
-          testCtx,
-        )
-        const extDirReq = requests.find((r) => r.permission === "external_directory")
-        expect(extDirReq).toBeDefined()
+        await expect(
+          bash.execute(
+            {
+              command: "cd ../",
+              description: "Change to parent directory",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Access denied")
       },
     })
   })
 
-  test("asks for external_directory permission when workdir is outside project", async () => {
+  test("throws when workdir is outside project", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const bash = await BashTool.init()
-        const requests: Array<Omit<PermissionNext.Request, "id" | "sessionID" | "tool">> = []
-        const testCtx = {
-          ...ctx,
-          ask: async (req: Omit<PermissionNext.Request, "id" | "sessionID" | "tool">) => {
-            requests.push(req)
-          },
-        }
-        await bash.execute(
-          {
-            command: "ls",
-            workdir: "/tmp",
-            description: "List /tmp",
-          },
-          testCtx,
-        )
-        const extDirReq = requests.find((r) => r.permission === "external_directory")
-        expect(extDirReq).toBeDefined()
-        expect(extDirReq!.patterns).toContain("/tmp/*")
+        await expect(
+          bash.execute(
+            {
+              command: "ls",
+              workdir: "/tmp",
+              description: "List /tmp",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Access denied")
       },
     })
   })
 
-  test("asks for external_directory permission when file arg is outside project", async () => {
+  test("throws when file arg is outside project", async () => {
     await using outerTmp = await tmpdir({
       init: async (dir) => {
         await Bun.write(path.join(dir, "outside.txt"), "x")
@@ -160,56 +145,37 @@ describe("tool.bash permissions", () => {
       directory: tmp.path,
       fn: async () => {
         const bash = await BashTool.init()
-        const requests: Array<Omit<PermissionNext.Request, "id" | "sessionID" | "tool">> = []
-        const testCtx = {
-          ...ctx,
-          ask: async (req: Omit<PermissionNext.Request, "id" | "sessionID" | "tool">) => {
-            requests.push(req)
-          },
-        }
         const filepath = path.join(outerTmp.path, "outside.txt")
-        await bash.execute(
-          {
-            command: `cat ${filepath}`,
-            description: "Read external file",
-          },
-          testCtx,
-        )
-        const extDirReq = requests.find((r) => r.permission === "external_directory")
-        const expected = path.join(outerTmp.path, "*")
-        expect(extDirReq).toBeDefined()
-        expect(extDirReq!.patterns).toContain(expected)
-        expect(extDirReq!.always).toContain(expected)
+        await expect(
+          bash.execute(
+            {
+              command: `cat ${filepath}`,
+              description: "Read external file",
+            },
+            ctx,
+          ),
+        ).rejects.toThrow("Access denied")
       },
     })
   })
 
-  test("does not ask for external_directory permission when rm inside project", async () => {
+  test("does not throw when rm targets file inside project", async () => {
     await using tmp = await tmpdir({ git: true })
     await Instance.provide({
       directory: tmp.path,
       fn: async () => {
         const bash = await BashTool.init()
-        const requests: Array<Omit<PermissionNext.Request, "id" | "sessionID" | "tool">> = []
-        const testCtx = {
-          ...ctx,
-          ask: async (req: Omit<PermissionNext.Request, "id" | "sessionID" | "tool">) => {
-            requests.push(req)
-          },
-        }
 
         await Bun.write(path.join(tmp.path, "tmpfile"), "x")
 
+        // Should not throw - file is inside the project directory
         await bash.execute(
           {
             command: "rm tmpfile",
             description: "Remove tmpfile",
           },
-          testCtx,
+          ctx,
         )
-
-        const extDirReq = requests.find((r) => r.permission === "external_directory")
-        expect(extDirReq).toBeUndefined()
       },
     })
   })
