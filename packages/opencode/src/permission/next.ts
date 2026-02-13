@@ -234,7 +234,10 @@ export namespace PermissionNext {
     const match = merged.findLast(
       (rule) => Wildcard.match(permission, rule.permission) && Wildcard.match(pattern, rule.pattern),
     )
-    return match ?? { action: "ask", permission, pattern: "*" }
+    const result = match ?? { action: "ask", permission, pattern: "*" }
+    // SECURE: never auto-approve — clamp "allow" to "ask"
+    if (result.action === "allow") return { ...result, action: "ask" }
+    return result
   }
 
   const EDIT_TOOLS = ["edit", "write", "patch", "multiedit"]
