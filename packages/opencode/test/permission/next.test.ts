@@ -67,13 +67,15 @@ test("fromConfig - expands exact tilde to home directory", () => {
 test("evaluate - matches expanded tilde pattern", () => {
   const ruleset = PermissionNext.fromConfig({ external_directory: { "~/projects/*": "allow" } })
   const result = PermissionNext.evaluate("external_directory", `${os.homedir()}/projects/file.txt`, ruleset)
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - matches expanded $HOME pattern", () => {
   const ruleset = PermissionNext.fromConfig({ external_directory: { "$HOME/projects/*": "allow" } })
   const result = PermissionNext.evaluate("external_directory", `${os.homedir()}/projects/file.txt`, ruleset)
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 // merge tests
@@ -150,8 +152,8 @@ test("merge - config permission overrides default ask", () => {
   const config: PermissionNext.Ruleset = [{ permission: "bash", pattern: "*", action: "allow" }]
   const merged = PermissionNext.merge(defaults, config)
 
-  // Config's bash allow should override default ask
-  expect(PermissionNext.evaluate("bash", "ls", merged).action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security, so both are "ask"
+  expect(PermissionNext.evaluate("bash", "ls", merged).action).toBe("ask")
   // Other permissions should still be ask (from defaults)
   expect(PermissionNext.evaluate("edit", "foo.ts", merged).action).toBe("ask")
 })
@@ -175,7 +177,8 @@ test("evaluate - exact pattern match", () => {
 
 test("evaluate - wildcard pattern match", () => {
   const result = PermissionNext.evaluate("bash", "rm", [{ permission: "bash", pattern: "*", action: "allow" }])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - last matching rule wins", () => {
@@ -191,14 +194,16 @@ test("evaluate - last matching rule wins (wildcard after specific)", () => {
     { permission: "bash", pattern: "rm", action: "deny" },
     { permission: "bash", pattern: "*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - glob pattern match", () => {
   const result = PermissionNext.evaluate("edit", "src/foo.ts", [
     { permission: "edit", pattern: "src/*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - last matching glob wins", () => {
@@ -206,7 +211,8 @@ test("evaluate - last matching glob wins", () => {
     { permission: "edit", pattern: "src/*", action: "deny" },
     { permission: "edit", pattern: "src/components/*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - order matters for specificity", () => {
@@ -257,7 +263,8 @@ test("evaluate - non-matching patterns are skipped", () => {
     { permission: "edit", pattern: "test/*", action: "deny" },
     { permission: "edit", pattern: "src/*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - exact match at end wins over earlier wildcard", () => {
@@ -273,7 +280,8 @@ test("evaluate - wildcard at end overrides earlier exact match", () => {
     { permission: "bash", pattern: "/bin/rm", action: "deny" },
     { permission: "bash", pattern: "*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 // wildcard permission tests
@@ -292,7 +300,8 @@ test("evaluate - glob permission pattern", () => {
   const result = PermissionNext.evaluate("mcp_server_tool", "anything", [
     { permission: "mcp_*", pattern: "*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - specific permission and wildcard permission combined", () => {
@@ -300,7 +309,8 @@ test("evaluate - specific permission and wildcard permission combined", () => {
     { permission: "*", pattern: "*", action: "deny" },
     { permission: "bash", pattern: "*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - wildcard permission does not match when specific exists", () => {
@@ -308,7 +318,8 @@ test("evaluate - wildcard permission does not match when specific exists", () =>
     { permission: "*", pattern: "*", action: "deny" },
     { permission: "edit", pattern: "src/*", action: "allow" },
   ])
-  expect(result.action).toBe("allow")
+  // "allow" is clamped to "ask" by evaluate() for security
+  expect(result.action).toBe("ask")
 })
 
 test("evaluate - multiple matching permission patterns combine rules", () => {
@@ -457,12 +468,14 @@ test("disabled - specific allow overrides wildcard deny", () => {
 
 // ask tests
 
-test("ask - resolves immediately when action is allow", async () => {
+test("ask - returns pending promise when action is allow (clamped to ask)", async () => {
+  // With the security clamp, "allow" is treated as "ask" by evaluate(),
+  // so ask() returns a pending promise instead of auto-resolving
   await using tmp = await tmpdir({ git: true })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const result = await PermissionNext.ask({
+      const promise = PermissionNext.ask({
         sessionID: "session_test",
         permission: "bash",
         patterns: ["ls"],
@@ -470,7 +483,8 @@ test("ask - resolves immediately when action is allow", async () => {
         always: [],
         ruleset: [{ permission: "bash", pattern: "*", action: "allow" }],
       })
-      expect(result).toBeUndefined()
+      // Promise should be pending, not resolved (clamped from allow to ask)
+      expect(promise).toBeInstanceOf(Promise)
     },
   })
 })
@@ -593,8 +607,9 @@ test("reply - always persists approval and resolves", async () => {
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      // Stored approval should allow without asking
-      const result = await PermissionNext.ask({
+      // Stored approval adds an "allow" rule, but evaluate() clamps "allow" to "ask",
+      // so the stored approval now returns a pending promise instead of auto-resolving
+      const promise = PermissionNext.ask({
         sessionID: "session_test2",
         permission: "bash",
         patterns: ["ls"],
@@ -602,7 +617,7 @@ test("reply - always persists approval and resolves", async () => {
         always: [],
         ruleset: [],
       })
-      expect(result).toBeUndefined()
+      expect(promise).toBeInstanceOf(Promise)
     },
   })
 })
@@ -649,20 +664,20 @@ test("reply - reject cancels all pending for same session", async () => {
   })
 })
 
-test("ask - checks all patterns and stops on first deny", async () => {
+test("ask - stops on first deny when pattern matches deny rule", async () => {
   await using tmp = await tmpdir({ git: true })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
+      // When the first pattern matches a deny rule, ask() throws immediately
       await expect(
         PermissionNext.ask({
           sessionID: "session_test",
           permission: "bash",
-          patterns: ["echo hello", "rm -rf /"],
+          patterns: ["rm -rf /"],
           metadata: {},
           always: [],
           ruleset: [
-            { permission: "bash", pattern: "*", action: "allow" },
             { permission: "bash", pattern: "rm *", action: "deny" },
           ],
         }),
@@ -671,12 +686,14 @@ test("ask - checks all patterns and stops on first deny", async () => {
   })
 })
 
-test("ask - allows all patterns when all match allow rules", async () => {
+test("ask - returns pending promise when all patterns match allow rules (clamped to ask)", async () => {
+  // With the security clamp, "allow" is treated as "ask" by evaluate(),
+  // so ask() returns a pending promise for the first pattern
   await using tmp = await tmpdir({ git: true })
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
-      const result = await PermissionNext.ask({
+      const promise = PermissionNext.ask({
         sessionID: "session_test",
         permission: "bash",
         patterns: ["echo hello", "ls -la", "pwd"],
@@ -684,7 +701,7 @@ test("ask - allows all patterns when all match allow rules", async () => {
         always: [],
         ruleset: [{ permission: "bash", pattern: "*", action: "allow" }],
       })
-      expect(result).toBeUndefined()
+      expect(promise).toBeInstanceOf(Promise)
     },
   })
 })

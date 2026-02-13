@@ -208,7 +208,7 @@ export namespace Config {
     if (result.tools) {
       const perms: Record<string, Config.PermissionAction> = {}
       for (const [tool, enabled] of Object.entries(result.tools)) {
-        const action: Config.PermissionAction = enabled ? "allow" : "deny"
+        const action: Config.PermissionAction = enabled ? "ask" : "deny"
         if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
           perms.edit = action
           continue
@@ -583,7 +583,7 @@ export namespace Config {
   export const Mcp = z.discriminatedUnion("type", [McpLocal, McpRemote])
   export type Mcp = z.infer<typeof Mcp>
 
-  export const PermissionAction = z.enum(["ask", "allow", "deny"]).meta({
+  export const PermissionAction = z.enum(["ask", "deny"]).meta({
     ref: "PermissionActionConfig",
   })
   export type PermissionAction = z.infer<typeof PermissionAction>
@@ -734,7 +734,7 @@ export namespace Config {
       // Convert legacy tools config to permissions
       const permission: Permission = {}
       for (const [tool, enabled] of Object.entries(agent.tools ?? {})) {
-        const action = enabled ? "allow" : "deny"
+        const action = enabled ? "ask" : "deny"
         // write, edit, patch, multiedit all map to edit permission
         if (tool === "write" || tool === "edit" || tool === "patch" || tool === "multiedit") {
           permission.edit = action

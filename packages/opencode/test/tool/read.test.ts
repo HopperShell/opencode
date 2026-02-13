@@ -152,14 +152,17 @@ describe("tool.read external_directory permission", () => {
 })
 
 describe("tool.read env file permissions", () => {
+  // With the security clamp (evaluate() clamps "allow" to "ask"), all files
+  // trigger the ask prompt. Previously .env.example, .envrc, and environment.ts
+  // had "allow" rules and didn't ask, but now they're clamped to "ask" too.
   const cases: [string, boolean][] = [
     [".env", true],
     [".env.local", true],
     [".env.production", true],
     [".env.development.local", true],
-    [".env.example", false],
-    [".envrc", false],
-    ["environment.ts", false],
+    [".env.example", true],
+    [".envrc", true],
+    ["environment.ts", true],
   ]
 
   describe.each(["build", "plan"])("agent=%s", (agentName) => {

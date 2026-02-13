@@ -38,8 +38,9 @@ test("build agent has correct default properties", async () => {
       expect(build).toBeDefined()
       expect(build?.mode).toBe("primary")
       expect(build?.native).toBe(true)
-      expect(evalPerm(build, "edit")).toBe("allow")
-      expect(evalPerm(build, "bash")).toBe("allow")
+      // "allow" is clamped to "ask" by evaluate() for security
+      expect(evalPerm(build, "edit")).toBe("ask")
+      expect(evalPerm(build, "bash")).toBe("ask")
     },
   })
 })
@@ -53,8 +54,8 @@ test("plan agent denies edits except .opencode/plans/*", async () => {
       expect(plan).toBeDefined()
       // Wildcard is denied
       expect(evalPerm(plan, "edit")).toBe("deny")
-      // But specific path is allowed
-      expect(PermissionNext.evaluate("edit", ".opencode/plans/foo.md", plan!.permission).action).toBe("allow")
+      // But specific path matches (clamped from allow to ask)
+      expect(PermissionNext.evaluate("edit", ".opencode/plans/foo.md", plan!.permission).action).toBe("ask")
     },
   })
 })
@@ -203,8 +204,8 @@ test("agent permission config merges with defaults", async () => {
       expect(build).toBeDefined()
       // Specific pattern is denied
       expect(PermissionNext.evaluate("bash", "rm -rf *", build!.permission).action).toBe("deny")
-      // Edit still allowed
-      expect(evalPerm(build, "edit")).toBe("allow")
+      // Edit matches allow rule (clamped to ask)
+      expect(evalPerm(build, "edit")).toBe("ask")
     },
   })
 })
@@ -393,13 +394,14 @@ test("default permission includes doom_loop and external_directory as ask", asyn
   })
 })
 
-test("webfetch is allowed by default", async () => {
+test("webfetch is allowed by default (clamped to ask)", async () => {
   await using tmp = await tmpdir()
   await Instance.provide({
     directory: tmp.path,
     fn: async () => {
       const build = await Agent.get("build")
-      expect(evalPerm(build, "webfetch")).toBe("allow")
+      // "allow" is clamped to "ask" by evaluate() for security
+      expect(evalPerm(build, "webfetch")).toBe("ask")
     },
   })
 })
@@ -461,7 +463,8 @@ test("Truncate.GLOB is allowed even when user denies external_directory globally
     directory: tmp.path,
     fn: async () => {
       const build = await Agent.get("build")
-      expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, build!.permission).action).toBe("allow")
+      // "allow" is clamped to "ask" by evaluate() for security
+      expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, build!.permission).action).toBe("ask")
       expect(PermissionNext.evaluate("external_directory", Truncate.DIR, build!.permission).action).toBe("deny")
       expect(PermissionNext.evaluate("external_directory", "/some/other/path", build!.permission).action).toBe("deny")
     },
@@ -485,7 +488,8 @@ test("Truncate.GLOB is allowed even when user denies external_directory per-agen
     directory: tmp.path,
     fn: async () => {
       const build = await Agent.get("build")
-      expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, build!.permission).action).toBe("allow")
+      // "allow" is clamped to "ask" by evaluate() for security
+      expect(PermissionNext.evaluate("external_directory", Truncate.GLOB, build!.permission).action).toBe("ask")
       expect(PermissionNext.evaluate("external_directory", Truncate.DIR, build!.permission).action).toBe("deny")
       expect(PermissionNext.evaluate("external_directory", "/some/other/path", build!.permission).action).toBe("deny")
     },
@@ -542,7 +546,8 @@ description: Permission skill.
         const build = await Agent.get("build")
         const skillDir = path.join(tmp.path, ".opencode", "skill", "perm-skill")
         const target = path.join(skillDir, "reference", "notes.md")
-        expect(PermissionNext.evaluate("external_directory", target, build!.permission).action).toBe("allow")
+        // "allow" is clamped to "ask" by evaluate() for security
+        expect(PermissionNext.evaluate("external_directory", target, build!.permission).action).toBe("ask")
       },
     })
   } finally {

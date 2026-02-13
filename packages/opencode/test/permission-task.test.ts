@@ -21,9 +21,10 @@ describe("PermissionNext.evaluate for permission.task", () => {
     expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
   })
 
-  test("returns allow for explicit allow", () => {
+  test("returns ask for explicit allow (clamped)", () => {
     const ruleset = createRuleset({ "code-reviewer": "allow" })
-    expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("allow")
+    // "allow" is clamped to "ask" by evaluate() for security
+    expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("ask")
   })
 
   test("returns ask for explicit ask", () => {
@@ -38,10 +39,11 @@ describe("PermissionNext.evaluate for permission.task", () => {
     expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("ask")
   })
 
-  test("matches wildcard patterns with allow", () => {
+  test("matches wildcard patterns with allow (clamped to ask)", () => {
     const ruleset = createRuleset({ "orchestrator-*": "allow" })
-    expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("allow")
-    expect(PermissionNext.evaluate("task", "orchestrator-slow", ruleset).action).toBe("allow")
+    // "allow" is clamped to "ask" by evaluate() for security
+    expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("ask")
+    expect(PermissionNext.evaluate("task", "orchestrator-slow", ruleset).action).toBe("ask")
   })
 
   test("matches wildcard patterns with ask", () => {
@@ -56,12 +58,14 @@ describe("PermissionNext.evaluate for permission.task", () => {
       "orchestrator-*": "deny",
       "orchestrator-fast": "allow",
     })
-    expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("allow")
+    // "allow" is clamped to "ask" by evaluate() for security
+    expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("ask")
     expect(PermissionNext.evaluate("task", "orchestrator-slow", ruleset).action).toBe("deny")
   })
 
   test("matches global wildcard", () => {
-    expect(PermissionNext.evaluate("task", "any-agent", createRuleset({ "*": "allow" })).action).toBe("allow")
+    // "allow" is clamped to "ask" by evaluate() for security
+    expect(PermissionNext.evaluate("task", "any-agent", createRuleset({ "*": "allow" })).action).toBe("ask")
     expect(PermissionNext.evaluate("task", "any-agent", createRuleset({ "*": "deny" })).action).toBe("deny")
     expect(PermissionNext.evaluate("task", "any-agent", createRuleset({ "*": "ask" })).action).toBe("ask")
   })
@@ -145,7 +149,7 @@ describe("permission.task with real config files", () => {
       config: {
         permission: {
           task: {
-            "*": "allow",
+            "*": "ask",
             "code-reviewer": "deny",
           },
         },
@@ -156,9 +160,9 @@ describe("permission.task with real config files", () => {
       fn: async () => {
         const config = await Config.get()
         const ruleset = PermissionNext.fromConfig(config.permission ?? {})
-        // general and orchestrator-fast should be allowed, code-reviewer denied
-        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("allow")
-        expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("allow")
+        // general and orchestrator-fast should be ask, code-reviewer denied
+        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("ask")
+        expect(PermissionNext.evaluate("task", "orchestrator-fast", ruleset).action).toBe("ask")
         expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
       },
     })
@@ -195,7 +199,7 @@ describe("permission.task with real config files", () => {
       config: {
         permission: {
           task: {
-            general: "allow",
+            general: "ask",
             "code-reviewer": "deny",
           },
         },
@@ -206,7 +210,7 @@ describe("permission.task with real config files", () => {
       fn: async () => {
         const config = await Config.get()
         const ruleset = PermissionNext.fromConfig(config.permission ?? {})
-        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("allow")
+        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("ask")
         expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
         // Unspecified agents default to "ask"
         expect(PermissionNext.evaluate("task", "unknown-agent", ruleset).action).toBe("ask")
@@ -219,11 +223,11 @@ describe("permission.task with real config files", () => {
       git: true,
       config: {
         permission: {
-          bash: "allow",
+          bash: "ask",
           edit: "ask",
           task: {
             "*": "deny",
-            general: "allow",
+            general: "ask",
           },
         },
       },
@@ -235,11 +239,11 @@ describe("permission.task with real config files", () => {
         const ruleset = PermissionNext.fromConfig(config.permission ?? {})
 
         // Verify task permissions
-        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("allow")
+        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("ask")
         expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
 
         // Verify other tool permissions
-        expect(PermissionNext.evaluate("bash", "*", ruleset).action).toBe("allow")
+        expect(PermissionNext.evaluate("bash", "*", ruleset).action).toBe("ask")
         expect(PermissionNext.evaluate("edit", "*", ruleset).action).toBe("ask")
 
         // Verify disabled tools
@@ -247,7 +251,7 @@ describe("permission.task with real config files", () => {
         expect(disabled.has("bash")).toBe(false)
         expect(disabled.has("edit")).toBe(false)
         // task is NOT disabled because disabled() uses findLast, and the last rule
-        // matching "task" permission is {pattern: "general", action: "allow"}, not pattern: "*"
+        // matching "task" permission is {pattern: "general", action: "ask"}, not pattern: "*"
         expect(disabled.has("task")).toBe(false)
       },
     })
@@ -259,8 +263,8 @@ describe("permission.task with real config files", () => {
       config: {
         permission: {
           task: {
-            general: "allow",
-            "code-reviewer": "allow",
+            general: "ask",
+            "code-reviewer": "ask",
             "*": "deny",
           },
         },
@@ -285,14 +289,14 @@ describe("permission.task with real config files", () => {
     })
   })
 
-  test("task tool NOT disabled when specific allow comes last in config", async () => {
+  test("task tool NOT disabled when specific ask comes last in config", async () => {
     await using tmp = await tmpdir({
       git: true,
       config: {
         permission: {
           task: {
             "*": "deny",
-            general: "allow",
+            general: "ask",
           },
         },
       },
@@ -303,13 +307,13 @@ describe("permission.task with real config files", () => {
         const config = await Config.get()
         const ruleset = PermissionNext.fromConfig(config.permission ?? {})
 
-        // Evaluate uses findLast - "general" allow comes after "*" deny
-        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("allow")
+        // Evaluate uses findLast - "general" ask comes after "*" deny
+        expect(PermissionNext.evaluate("task", "general", ruleset).action).toBe("ask")
         // Other agents still denied by the earlier "*" deny
         expect(PermissionNext.evaluate("task", "code-reviewer", ruleset).action).toBe("deny")
 
         // disabled() uses findLast and checks if the last rule has pattern: "*" with action: "deny"
-        // In this case, the last rule is {pattern: "general", action: "allow"}, not pattern: "*"
+        // In this case, the last rule is {pattern: "general", action: "ask"}, not pattern: "*"
         // So the task tool is NOT disabled (even though most subagents are denied)
         const disabled = PermissionNext.disabled(["task"], ruleset)
         expect(disabled.has("task")).toBe(false)

@@ -936,8 +936,8 @@ test("migrates legacy tools config to permissions - allow", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.agent?.["test"]?.permission).toEqual({
-        bash: "allow",
-        read: "allow",
+        bash: "ask",
+        read: "ask",
       })
     },
   })
@@ -997,7 +997,7 @@ test("migrates legacy write tool to edit permission", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.agent?.["test"]?.permission).toEqual({
-        edit: "allow",
+        edit: "ask",
       })
     },
   })
@@ -1135,7 +1135,7 @@ test("migrates legacy patch tool to edit permission", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.agent?.["test"]?.permission).toEqual({
-        edit: "allow",
+        edit: "ask",
       })
     },
   })
@@ -1196,10 +1196,10 @@ test("migrates mixed legacy tools config", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.agent?.["test"]?.permission).toEqual({
-        bash: "allow",
-        edit: "allow",
+        bash: "ask",
+        edit: "ask",
         read: "deny",
-        webfetch: "allow",
+        webfetch: "ask",
       })
     },
   })
@@ -1215,7 +1215,7 @@ test("merges legacy tools with existing permission config", async () => {
           agent: {
             test: {
               permission: {
-                glob: "allow",
+                glob: "ask",
               },
               tools: {
                 bash: true,
@@ -1231,8 +1231,8 @@ test("merges legacy tools with existing permission config", async () => {
     fn: async () => {
       const config = await Config.get()
       expect(config.agent?.["test"]?.permission).toEqual({
-        glob: "allow",
-        bash: "allow",
+        glob: "ask",
+        bash: "ask",
       })
     },
   })
@@ -1250,13 +1250,13 @@ test("permission config preserves key order", async () => {
             edit: "ask",
             write: "ask",
             external_directory: "ask",
-            read: "allow",
-            todowrite: "allow",
-            todoread: "allow",
-            "thoughts_*": "allow",
-            "reasoning_model_*": "allow",
-            "tools_*": "allow",
-            "pr_comments_*": "allow",
+            read: "ask",
+            todowrite: "ask",
+            todoread: "ask",
+            "thoughts_*": "ask",
+            "reasoning_model_*": "ask",
+            "tools_*": "ask",
+            "pr_comments_*": "ask",
           },
         }),
       )

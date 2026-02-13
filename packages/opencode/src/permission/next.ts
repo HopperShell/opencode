@@ -42,19 +42,26 @@ export namespace PermissionNext {
   })
   export type Ruleset = z.infer<typeof Ruleset>
 
-  export function fromConfig(permission: Config.Permission) {
+  /**
+   * Internal permission input type that accepts all runtime actions (including "allow").
+   * Config.Permission only allows "ask" | "deny" (user-facing), but internal defaults
+   * may use "allow" which gets clamped at evaluate() time.
+   */
+  export type InternalPermission = Record<string, Action | Record<string, Action>>
+
+  export function fromConfig(permission: Config.Permission | InternalPermission) {
     const ruleset: Ruleset = []
     for (const [key, value] of Object.entries(permission)) {
       if (typeof value === "string") {
         ruleset.push({
           permission: key,
-          action: value,
+          action: value as Action,
           pattern: "*",
         })
         continue
       }
       ruleset.push(
-        ...Object.entries(value).map(([pattern, action]) => ({ permission: key, pattern: expand(pattern), action })),
+        ...Object.entries(value).map(([pattern, action]) => ({ permission: key, pattern: expand(pattern), action: action as Action })),
       )
     }
     return ruleset
